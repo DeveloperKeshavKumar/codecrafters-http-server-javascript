@@ -5,12 +5,17 @@ console.log("Logs from your program will appear here!");
 
 // Uncomment this to pass the first stage
 const server = net.createServer((socket) => {
-    const headers = socket.split('\r\n');
-    if(headers[0] == 'GET /index.html HTTP/1.1'){
-        socket.write('HTTP/1.1 200 OK\r\n\r\n');
-    }else{
-        socket.write('HTTP/1.1 404 NOT FOUND\r\n\r\n');
-    }
+    socket.on('data', (data) => {
+        const request = data.toString();
+        const headers = request.split('\r\n');
+
+        if (headers[0] === 'GET /index.html HTTP/1.1'){
+            socket.write('HTTP/1.1 200 OK\r\n\r\n')
+        }else{
+            socket.write('HTTP/1.1 400 NOT FOUND\r\n\r\n')
+        }
+    });
+
     socket.on("close", () => {
         socket.end();
     });
