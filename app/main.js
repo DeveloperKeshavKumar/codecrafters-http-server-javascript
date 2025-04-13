@@ -8,9 +8,11 @@ const server = net.createServer((socket) => {
     socket.on('data', (data) => {
         const request = data.toString();
         const headers = request.split('\r\n');
+        // console.log(headers);
+
         let statusLine = headers[0].split(' ');
         let hostLine = headers[1];
-        let requestHeaders = headers[2];
+        let requestHeaders = headers[2].split(': ')[1].startsWith('*/') ? headers[3] : headers[2];
         let route = statusLine[1];
 
         // Respond With 200
@@ -39,7 +41,18 @@ const server = net.createServer((socket) => {
 
         // Read Header
         const userAgent = requestHeaders.split(': ')[1];
-        socket.write(`HTTP/1.1 200 OK\r\nContent-type: text/plain\r\nContent-length: ${userAgent.length}\r\n\r\n${userAgent}`)
+        console.log(userAgent);
+        if (route === '/user-agent') {
+            if (userAgent !== undefined) {
+                socket.write(`HTTP/1.1 200 OK\r\nContent-type: text/plain\r\nContent-length: ${userAgent.length}\r\n\r\n${userAgent}`)
+            }
+        } else if (route === '/') {
+            socket.write('HTTP/1.1 200 OK\r\n\r\n');
+        }
+        else {
+            socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
+        }
+
     });
 
     socket.on("close", () => {
