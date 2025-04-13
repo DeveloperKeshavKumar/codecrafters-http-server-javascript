@@ -9,15 +9,26 @@ const server = net.createServer((socket) => {
         const request = data.toString();
         const headers = request.split('\r\n');
         const idx = headers[0].split(' ');
-        const route = idx[1];
-        
-        socket.write(`HTTP/1.1 200 OK\r\nContent-type: text/plain\r\nContent-length: ${route.length -1}\r\n\r\n${route}`)
+        let route = idx[1];
 
+        // Respond With 200
+        // socket.write('HTTP/1.1 200 OK\r\n\r\n');
+        // socket.on("close", () => {
+        //     socket.end();
+        // });
+
+        // Extract URL Path
         // if (headers[0] === 'GET / HTTP/1.1') {
         //     socket.write('HTTP/1.1 200 OK\r\n\r\n')
         // } else {
         //     socket.write('HTTP/1.1 404 Not Found\r\n\r\n')
         // }
+
+        // Respond With Body
+        if (route.startsWith('/echo/')) {
+            route = route.slice(6);
+            socket.write(`HTTP/1.1 200 OK\r\nContent-type: text/plain\r\nContent-length: ${route.length}\r\n\r\n${route}`)
+        }
     });
 
     socket.on("close", () => {
