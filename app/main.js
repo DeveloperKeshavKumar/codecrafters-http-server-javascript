@@ -9,9 +9,9 @@ const server = net.createServer((socket) => {
         const request = data.toString();
         const headers = request.split('\r\n');
 
-        if (headers[0] === 'GET /index.html HTTP/1.1'){
+        if (headers[0] === 'GET / HTTP/1.1') {
             socket.write('HTTP/1.1 200 OK\r\n\r\n')
-        }else{
+        } else {
             socket.write('HTTP/1.1 404 Not Found\r\n\r\n')
         }
     });
