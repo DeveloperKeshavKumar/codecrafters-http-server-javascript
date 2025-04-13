@@ -29,7 +29,7 @@ const server = net.createServer((socket) => {
             route = route.slice(6);
             socket.write(`HTTP/1.1 200 OK\r\nContent-type: text/plain\r\nContent-length: ${route.length}\r\n\r\n${route}`);
         }else{
-            socket.write('HTTP/1.1 200 OK\r\n\r\n');
+            socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
         }
     });
 
