@@ -11,49 +11,31 @@ const server = net.createServer((socket) => {
         // console.log(headers);
 
         let statusLine = headers[0].split(' ');
-        let hostLine = headers[1];
-        let requestHeaders = headers[2].split(': ')[1].startsWith('*/') ? headers[3] : headers[2];
         let route = statusLine[1];
-        const userAgent = requestHeaders.split(': ')[1];
-        console.log(userAgent);
-
-        // Respond With 200
-        // socket.write('HTTP/1.1 200 OK\r\n\r\n');
-        // socket.on("close", () => {
-        //     socket.end();
-        // });
-
-        // Extract URL Path
-        // if (headers[0] === 'GET / HTTP/1.1') {
-        //     socket.write('HTTP/1.1 200 OK\r\n\r\n')
-        // } else {
-        //     socket.write('HTTP/1.1 404 Not Found\r\n\r\n')
-        // }
-
-        // Respond With Body
-        if (route.startsWith('/echo/')) {
-            route = route.slice(6);
-            socket.write(`HTTP/1.1 200 OK\r\nContent-type: text/plain\r\nContent-length: ${route.length}\r\n\r\n${route}`);
-        }
-        //  else if (route === '/') {
-        //     socket.write('HTTP/1.1 200 OK\r\n\r\n');
-        // }
-        // else {
-        //     socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
-        // }
 
         // Read Header
-        else if (route === '/user-agent') {
+        if (route === '/user-agent') {
+            const userAgentLine = headers.filter(x => x.startsWith("User-Agent:"));
+            const userAgent = userAgentLine[0].split(": ")[1];
             if (userAgent !== undefined) {
                 socket.write(`HTTP/1.1 200 OK\r\nContent-type: text/plain\r\nContent-length: ${userAgent.length}\r\n\r\n${userAgent}`)
             }
-        } else if (route === '/') {
+        }
+        // Respond With Body
+        else if (route.startsWith('/echo/')) {
+            route = route.slice(6);
+            socket.write(`HTTP/1.1 200 OK\r\nContent-type: text/plain\r\nContent-length: ${route.length}\r\n\r\n${route}`);
+        }
+        // Respond With 200
+        else if (route === '/') {
             socket.write('HTTP/1.1 200 OK\r\n\r\n');
         }
+        // Extract URL Path
         else {
             socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
         }
 
+        socket.end();
     });
 
     socket.on("close", () => {
