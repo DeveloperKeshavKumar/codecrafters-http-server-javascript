@@ -27,7 +27,9 @@ const server = net.createServer((socket) => {
         // Respond With Body
         if (route.startsWith('/echo/')) {
             route = route.slice(6);
-            socket.write(`HTTP/1.1 200 OK\r\nContent-type: text/plain\r\nContent-length: ${route.length}\r\n\r\n${route}`)
+            socket.write(`HTTP/1.1 200 OK\r\nContent-type: text/plain\r\nContent-length: ${route.length}\r\n\r\n${route}`);
+        }else{
+            socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
         }
     });
 
