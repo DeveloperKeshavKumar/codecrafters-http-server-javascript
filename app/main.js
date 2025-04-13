@@ -14,6 +14,8 @@ const server = net.createServer((socket) => {
         let hostLine = headers[1];
         let requestHeaders = headers[2].split(': ')[1].startsWith('*/') ? headers[3] : headers[2];
         let route = statusLine[1];
+        const userAgent = requestHeaders.split(': ')[1];
+        console.log(userAgent);
 
         // Respond With 200
         // socket.write('HTTP/1.1 200 OK\r\n\r\n');
@@ -29,10 +31,11 @@ const server = net.createServer((socket) => {
         // }
 
         // Respond With Body
-        // if (route.startsWith('/echo/')) {
-        //     route = route.slice(6);
-        //     socket.write(`HTTP/1.1 200 OK\r\nContent-type: text/plain\r\nContent-length: ${route.length}\r\n\r\n${route}`);
-        // } else if (route === '/') {
+        if (route.startsWith('/echo/')) {
+            route = route.slice(6);
+            socket.write(`HTTP/1.1 200 OK\r\nContent-type: text/plain\r\nContent-length: ${route.length}\r\n\r\n${route}`);
+        }
+        //  else if (route === '/') {
         //     socket.write('HTTP/1.1 200 OK\r\n\r\n');
         // }
         // else {
@@ -40,9 +43,7 @@ const server = net.createServer((socket) => {
         // }
 
         // Read Header
-        const userAgent = requestHeaders.split(': ')[1];
-        console.log(userAgent);
-        if (route === '/user-agent') {
+        else if (route === '/user-agent') {
             if (userAgent !== undefined) {
                 socket.write(`HTTP/1.1 200 OK\r\nContent-type: text/plain\r\nContent-length: ${userAgent.length}\r\n\r\n${userAgent}`)
             }
