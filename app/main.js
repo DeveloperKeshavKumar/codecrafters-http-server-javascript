@@ -70,7 +70,6 @@ const server = net.createServer((socket) => {
                             socket.removeListener('data', onData);
                             fs.writeFile(filePath, requestBody, (err) => {
                                 if (err) {
-                                    console.error("File write error:", err);
                                     socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
                                 } else {
                                     socket.write('HTTP/1.1 201 Created\r\n\r\n');
@@ -84,7 +83,6 @@ const server = net.createServer((socket) => {
                     } else {
                         fs.writeFile(filePath, requestBody, (err) => {
                             if (err) {
-                                console.error("File write error:", err);
                                 socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
                             } else {
                                 socket.write('HTTP/1.1 201 Created\r\n\r\n');
