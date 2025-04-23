@@ -1,37 +1,59 @@
+# Build Your Own HTTP Server
+
 [![progress-banner](https://backend.codecrafters.io/progress/http-server/a427051c-9fba-4988-bd78-2898a040e480)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
 
-This is a starting point for JavaScript solutions to the
-["Build Your Own HTTP server" Challenge](https://app.codecrafters.io/courses/http-server/overview).
 
-[HTTP](https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol) is the
-protocol that powers the web. In this challenge, you'll build a HTTP/1.1 server
-that is capable of serving multiple clients.
+A JavaScript implementation of an HTTP/1.1 server built from scratch.
 
-Along the way you'll learn about TCP servers,
-[HTTP request syntax](https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html),
-and more.
+## Overview
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+This project is a HTTP/1.1 server implementation written in JavaScript. It was developed as part of the "Build Your Own HTTP Server" challenge from CodeCrafters.
 
-# Passing the first stage
+## Features
 
-The entry point for your HTTP server implementation is in `app/main.js`. Study
-and uncomment the relevant code, and push your changes to pass the first stage:
+- TCP server implementation
+- HTTP/1.1 protocol support
+- Multi-client handling
+- Request parsing and response generation
+- Compression using gzip for improved performance
+- Persistent connections (Keep-Alive) for efficient resource loading
 
-```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
+## Requirements
+
+- Node.js (v21 or higher)
+
+## Running the Server
+
+To run the HTTP server locally:
+
+```bash
+./your_program.sh
 ```
 
-Time to move on to the next stage!
+Or directly:
 
-# Stage 2 & beyond
+```bash
+node app/main.js
+```
 
-Note: This section is for stages 2 and beyond.
+## Implementation Details
 
-1. Ensure you have `node (21)` installed locally
-1. Run `./your_program.sh` to run your program, which is implemented in
-   `app/main.js`.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+The implementation follows the HTTP/1.1 protocol specification and includes:
+
+- TCP socket handling
+- HTTP request parsing
+- Response generation with appropriate status codes
+- Header processing
+- Basic file serving capabilities
+- Content compression with gzip
+- Connection management for Keep-Alive requests
+
+## Learning Outcomes
+
+Through this project, I've gained experience with:
+
+- TCP networking in JavaScript
+- HTTP protocol implementation details
+- Socket programming
+- Request/response cycle handling
+- Error management in network applications
