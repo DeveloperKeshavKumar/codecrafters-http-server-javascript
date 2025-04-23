@@ -10,7 +10,6 @@ const server = net.createServer((socket) => {
         const [headerPart, body] = rawRequest.split('\r\n\r\n');
 
         const requestLines = headerPart.split('\r\n');
-        // console.log(requestLines);
         const requestLine = requestLines[0];
         const [method, urlPath, httpVersion] = requestLine.split(' ');
 
@@ -79,23 +78,9 @@ const server = net.createServer((socket) => {
 
         else if (urlPath.startsWith('/echo/')) {
             const message = urlPath.slice(6);
-
-            if (headers['Accept-Encoding']) {
-                if (headers['Accept-Encoding'].includes('gzip')) {
-                    socket.write(
-                        `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Encoding: gzip\r\n\r\n`
-                    );
-                }
-                else {
-                    socket.write(
-                        `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n`
-                    );
-                }
-            } else {
-                socket.write(
-                    `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${message.length}\r\n\r\n${message}`
-                );    
-            }
+            socket.write(
+                `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${message.length}\r\n\r\n${message}`
+            );
             socket.end();
             return;
         }
