@@ -1,6 +1,7 @@
 const net = require("net");
 const fs = require("fs");
 const path = require("path");
+const zlib = require("zlib");
 
 console.log("Logs from your program will appear here!");
 
@@ -82,9 +83,11 @@ const server = net.createServer((socket) => {
 
             if (headers['Accept-Encoding']) {
                 if (headers['Accept-Encoding'].includes('gzip')) {
+                    const compressed = zlib.gzipSync(message);
                     socket.write(
-                        `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Encoding: gzip\r\n\r\n`
+                        `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Encoding: gzip\r\nContent-Length: ${compressed.length}\r\n\r\n`
                     );
+                    socket.write(compressed);
                 }
                 else {
                     socket.write(
@@ -94,7 +97,7 @@ const server = net.createServer((socket) => {
             } else {
                 socket.write(
                     `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${message.length}\r\n\r\n${message}`
-                );    
+                );
             }
             socket.end();
             return;
