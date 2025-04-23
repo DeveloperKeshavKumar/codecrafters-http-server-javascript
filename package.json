@@ -4,7 +4,8 @@
     "description": "Build your own HTTP-Server challenge, from CodeCrafters",
     "main": "main.js",
     "scripts": {
-        "dev": "node --watch app/main.js"
+        "dev": "node --watch app/main.js",
+        "test": "rm -f test.ans && codecrafters test | tee test.ans && echo '\nDone'"
     },
     "keywords": [
         "build-your-own-x"
