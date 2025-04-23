@@ -3,26 +3,36 @@ const fs = require("fs");
 const path = require("path");
 const zlib = require("zlib");
 
-console.log("Logs from your program will appear here!");
-
 const server = net.createServer((socket) => {
-    socket.on("data", (data) => {
-        let requests = data.toString().split('\r\n\r\n');
-        for (let i = 0; i < requests.length - 1; i++) {
-            const rawRequest = requests[i] + '\r\n\r\n';
-            const [headerPart, body] = rawRequest.split('\r\n\r\n');
+    let buffer = '';
 
-            const requestLines = headerPart.split('\r\n');
-            // console.log(requestLines);
-            const requestLine = requestLines[0];
-            const [method, urlPath, httpVersion] = requestLine.split(' ');
+    socket.on("data", (chunk) => {
+        buffer += chunk.toString();
 
-            const headerLines = requestLines.slice(1).filter(line => line.length > 0);
+        while (true) {
+            const headerEnd = buffer.indexOf('\r\n\r\n');
+            if (headerEnd === -1) return;
 
+            const headerPart = buffer.slice(0, headerEnd);
             const headers = {};
-            for (const line of headerLines) {
+            const requestLines = headerPart.split('\r\n');
+            const [method, urlPath, httpVersion] = requestLines[0].split(' ');
+
+            requestLines.slice(1).forEach(line => {
                 const [key, value] = line.split(': ');
                 headers[key] = value;
+            });
+
+            const contentLength = parseInt(headers['Content-Length'] || '0', 10);
+            const totalRequestLength = headerEnd + 4 + contentLength;
+
+            if (buffer.length < totalRequestLength) return;
+            const body = buffer.slice(headerEnd + 4, totalRequestLength);
+            const remaining = buffer.slice(totalRequestLength);
+            buffer = remaining;
+
+            if (headers['Connection'] && headers['Connection'].toLowerCase() === 'close') {
+                socket.end();
             }
 
             if (urlPath.startsWith('/files/')) {
@@ -51,14 +61,36 @@ const server = net.createServer((socket) => {
                         fs.mkdirSync(baseDir, { recursive: true });
                     }
 
-                    fs.writeFile(filePath, body, (err) => {
-                        if (err) {
-                            console.error("File write error:", err);
-                            socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-                        } else {
-                            socket.write('HTTP/1.1 201 Created\r\n\r\n');
+                    const contentLength = parseInt(headers['Content-Length'] || '0', 10);
+                    requestBody = body || '';
+
+                    const onData = (chunk) => {
+                        requestBody += chunk.toString();
+                        if (requestBody.length >= contentLength) {
+                            socket.removeListener('data', onData);
+                            fs.writeFile(filePath, requestBody, (err) => {
+                                if (err) {
+                                    console.error("File write error:", err);
+                                    socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+                                } else {
+                                    socket.write('HTTP/1.1 201 Created\r\n\r\n');
+                                }
+                            });
                         }
-                    });
+                    };
+
+                    if (requestBody.length < contentLength) {
+                        socket.on('data', onData);
+                    } else {
+                        fs.writeFile(filePath, requestBody, (err) => {
+                            if (err) {
+                                console.error("File write error:", err);
+                                socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+                            } else {
+                                socket.write('HTTP/1.1 201 Created\r\n\r\n');
+                            }
+                        });
+                    }
                 }
 
                 return;
@@ -86,8 +118,7 @@ const server = net.createServer((socket) => {
                             `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Encoding: gzip\r\nContent-Length: ${compressed.length}\r\n\r\n`
                         );
                         socket.write(compressed);
-                    }
-                    else {
+                    } else {
                         socket.write(
                             `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n`
                         );
@@ -109,8 +140,8 @@ const server = net.createServer((socket) => {
                 socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
             }
 
-            if (data.toString().includes('Connection: close')) {
-                socket.end();
+            if (!headers['Connection'] || headers['Connection'].toLowerCase() !== 'close') {
+                socket.write('HTTP/1.1 200 OK\r\nConnection: keep-alive\r\n\r\n');
             }
         }
     });
