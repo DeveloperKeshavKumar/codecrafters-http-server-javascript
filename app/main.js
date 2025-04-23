@@ -5,8 +5,10 @@ const zlib = require("zlib");
 
 const server = net.createServer((socket) => {
     let buffer = '';
+    let socketEnded = false;
 
     socket.on("data", (chunk) => {
+        if (socketEnded) return;
         buffer += chunk.toString();
 
         while (true) {
@@ -31,122 +33,140 @@ const server = net.createServer((socket) => {
             const remaining = buffer.slice(totalRequestLength);
             buffer = remaining;
 
-            if (headers['Connection'] && headers['Connection'].toLowerCase() === 'close') {
-                socket.end();
-            }
+            const closeConnection = headers['Connection'] && headers['Connection'].toLowerCase() === 'close';
 
             if (urlPath.startsWith('/files/')) {
-                const directoryIndex = process.argv.indexOf('--directory');
-                const baseDir = directoryIndex !== -1 ? process.argv[directoryIndex + 1] : path.join(__dirname, 'tmp');
-                if (method === 'GET') {
-                    const requestedFile = urlPath.slice(7);
-                    const filePath = path.join(baseDir, requestedFile);
-
-                    fs.readFile(filePath, (err, fileData) => {
-                        if (err) {
-                            socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
-                            return;
-                        }
-
-                        socket.write(
-                            `HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: ${fileData.length}\r\n\r\n`
-                        );
-                        socket.write(fileData);
-                    });
-                } else if (method === 'POST') {
-                    const requestedFile = urlPath.slice(7);
-                    const filePath = path.join(baseDir, requestedFile);
-
-                    if (!fs.existsSync(baseDir)) {
-                        fs.mkdirSync(baseDir, { recursive: true });
-                    }
-
-                    const contentLength = parseInt(headers['Content-Length'] || '0', 10);
-                    requestBody = body || '';
-
-                    const onData = (chunk) => {
-                        requestBody += chunk.toString();
-                        if (requestBody.length >= contentLength) {
-                            socket.removeListener('data', onData);
-                            fs.writeFile(filePath, requestBody, (err) => {
-                                if (err) {
-                                    socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-                                } else {
-                                    socket.write('HTTP/1.1 201 Created\r\n\r\n');
-                                }
-                            });
-                        }
-                    };
-
-                    if (requestBody.length < contentLength) {
-                        socket.on('data', onData);
-                    } else {
-                        fs.writeFile(filePath, requestBody, (err) => {
-                            if (err) {
-                                socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
-                            } else {
-                                socket.write('HTTP/1.1 201 Created\r\n\r\n');
-                            }
-                        });
-                    }
-                }
-
-                return;
+                handleFilesRoute(socket, method, urlPath, headers, body, closeConnection);
             }
-
             else if (urlPath === '/user-agent') {
-                const userAgent = headers['User-Agent'];
-                if (userAgent !== undefined) {
-                    socket.write(
-                        `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${userAgent.length}\r\n\r\n${userAgent}`
-                    );
-                } else {
-                    socket.write('HTTP/1.1 400 Bad Request\r\n\r\n');
-                }
-                return;
+                handleUserAgentRoute(socket, headers, closeConnection);
             }
-
             else if (urlPath.startsWith('/echo/')) {
-                const message = urlPath.slice(6);
-
-                if (headers['Accept-Encoding']) {
-                    if (headers['Accept-Encoding'].includes('gzip')) {
-                        const compressed = zlib.gzipSync(message);
-                        socket.write(
-                            `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Encoding: gzip\r\nContent-Length: ${compressed.length}\r\n\r\n`
-                        );
-                        socket.write(compressed);
-                    } else {
-                        socket.write(
-                            `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n`
-                        );
-                    }
-                } else {
-                    socket.write(
-                        `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${message.length}\r\n\r\n${message}`
-                    );
-                }
-                return;
+                handleEchoRoute(socket, urlPath, headers, closeConnection);
             }
-
             else if (urlPath === '/') {
-                socket.write('HTTP/1.1 200 OK\r\n\r\n');
+                sendResponse(socket, 200, null, null, null, closeConnection);
+            }
+            else {
+                sendResponse(socket, 404, null, null, null, closeConnection);
+            }
+
+            if (closeConnection) {
+                socketEnded = true;
                 return;
             }
 
-            else {
-                socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
-            }
+            if (buffer.length === 0) break;
+        }
+    });
 
-            if (!headers['Connection'] || headers['Connection'].toLowerCase() !== 'close') {
-                socket.write('HTTP/1.1 200 OK\r\nConnection: keep-alive\r\n\r\n');
-            }
+    socket.on("error", (err) => {
+        console.error("Socket error:", err);
+        if (!socketEnded) {
+            socketEnded = true;
+            socket.end();
         }
     });
 
     socket.on("close", () => {
-        socket.end();
+        socketEnded = true;
     });
+
+    function sendResponse(socket, statusCode, contentType, content, contentEncoding, closeConnection) {
+        if (socketEnded) return;
+
+        let statusText = '';
+        switch (statusCode) {
+            case 200: statusText = 'OK'; break;
+            case 201: statusText = 'Created'; break;
+            case 400: statusText = 'Bad Request'; break;
+            case 404: statusText = 'Not Found'; break;
+            case 500: statusText = 'Internal Server Error'; break;
+            default: statusText = 'OK';
+        }
+
+        let headers = `HTTP/1.1 ${statusCode} ${statusText}\r\n`;
+
+        if (contentType) {
+            headers += `Content-Type: ${contentType}\r\n`;
+        }
+
+        if (contentEncoding) {
+            headers += `Content-Encoding: ${contentEncoding}\r\n`;
+        }
+
+        if (content !== null) {
+            const contentLength = Buffer.isBuffer(content) ? content.length : Buffer.byteLength(content);
+            headers += `Content-Length: ${contentLength}\r\n`;
+        }
+
+        if (closeConnection) {
+            headers += 'Connection: close\r\n';
+        }
+
+        headers += '\r\n';
+
+        if (content !== null) {
+            socket.write(headers);
+            socket.write(content);
+        } else {
+            socket.write(headers);
+        }
+
+        if (closeConnection) {
+            socketEnded = true;
+            socket.end();
+        }
+    }
+
+    function handleFilesRoute(socket, method, urlPath, headers, body, closeConnection) {
+        const directoryIndex = process.argv.indexOf('--directory');
+        const baseDir = directoryIndex !== -1 ? process.argv[directoryIndex + 1] : path.join(__dirname, 'tmp');
+        const requestedFile = urlPath.slice(7);
+        const filePath = path.join(baseDir, requestedFile);
+
+        if (method === 'GET') {
+            fs.readFile(filePath, (err, fileData) => {
+                if (err) {
+                    sendResponse(socket, 404, null, null, null, closeConnection);
+                    return;
+                }
+                sendResponse(socket, 200, 'application/octet-stream', fileData, null, closeConnection);
+            });
+        } else if (method === 'POST') {
+            if (!fs.existsSync(baseDir)) {
+                fs.mkdirSync(baseDir, { recursive: true });
+            }
+
+            fs.writeFile(filePath, body, (err) => {
+                if (err) {
+                    sendResponse(socket, 500, null, null, null, closeConnection);
+                } else {
+                    sendResponse(socket, 201, null, null, null, closeConnection);
+                }
+            });
+        }
+    }
+
+    function handleUserAgentRoute(socket, headers, closeConnection) {
+        const userAgent = headers['User-Agent'];
+        if (userAgent !== undefined) {
+            sendResponse(socket, 200, 'text/plain', userAgent, null, closeConnection);
+        } else {
+            sendResponse(socket, 400, null, null, null, closeConnection);
+        }
+    }
+
+    function handleEchoRoute(socket, urlPath, headers, closeConnection) {
+        const message = urlPath.slice(6);
+
+        if (headers['Accept-Encoding'] && headers['Accept-Encoding'].includes('gzip')) {
+            const compressed = zlib.gzipSync(message);
+            sendResponse(socket, 200, 'text/plain', compressed, 'gzip', closeConnection);
+        } else {
+            sendResponse(socket, 200, 'text/plain', message, null, closeConnection);
+        }
+    }
 });
 
 server.listen(4221, "localhost");
